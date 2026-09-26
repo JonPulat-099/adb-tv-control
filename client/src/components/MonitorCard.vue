@@ -12,6 +12,13 @@ const emit = defineEmits(['select', 'power', 'refresh']);
 const st = computed(() => statusOf(props.monitor.status));
 const canPower = computed(() => ['online', 'standby'].includes(props.monitor.status));
 const powerLabel = computed(() => (props.monitor.status === 'online' ? 'Перевести в ожидание' : 'Включить'));
+const startupHost = computed(() => {
+  try {
+    return props.monitor.startup_url ? new URL(props.monitor.startup_url).host : '';
+  } catch {
+    return '';
+  }
+});
 </script>
 
 <template>
@@ -28,6 +35,7 @@ const powerLabel = computed(() => (props.monitor.status === 'online' ? 'Пере
       <span>{{ monitor.location || 'Без расположения' }}</span>
       <span class="mono">{{ monitor.ip }}:{{ monitor.port }}</span>
     </div>
+    <div v-if="startupHost" class="meta startup" :title="monitor.startup_url">При включении: {{ startupHost }}</div>
     <div class="actions">
       <button class="btn remote" :class="{ 'btn-soft': selected }" type="button" @click="emit('select', monitor.id)">
         {{ selected ? 'Пульт открыт' : 'Пульт' }}
@@ -60,6 +68,7 @@ const powerLabel = computed(() => (props.monitor.status === 'online' ? 'Пере
 .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
 .name { margin: 0; font-size: 17px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meta { font-size: 13px; color: var(--muted); }
+.startup { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .actions { display: flex; gap: 8px; }
 .remote { flex: 1; }
 </style>

@@ -85,6 +85,7 @@ All routes except login need `Authorization: Bearer <token>`.
 | PATCH | /api/monitors/:id | admin | `{name, location}` |
 | DELETE | /api/monitors/:id | admin | remove + `adb disconnect` |
 | POST | /api/monitors/:id/refresh | any | re-check status now |
+| PUT | /api/monitors/:id/startup | any | `{url}` — site opened every time the screen turns on (`""` clears) |
 | POST | /api/monitors/:id/command | any | `{action, value}` (see below) |
 | POST | /api/monitors/bulk | any | `{action: "wake" \| "sleep"}` for all reachable TVs |
 | GET/POST | /api/users | admin | list / create (`role`: admin \| moderator) |
@@ -107,6 +108,8 @@ Every `POLL_INTERVAL_MS` (default 15 s) the server runs `adb connect`, `get-stat
 - `standby` — reachable, screen off (can be woken with `KEYCODE_WAKEUP`)
 - `unauthorized` — the TV is waiting for someone to allow debugging
 - `offline` — no answer (TV unplugged or fully off, wrong IP, network debugging disabled)
+
+If a TV has a startup site, it is opened whenever the TV goes from `standby`/`offline` to `online`: right away (plus ~3 s) when woken from the panel, or on the next status check when turned on with the physical remote. It is not reopened when the server restarts or while the screen stays on.
 
 ## Notes
 

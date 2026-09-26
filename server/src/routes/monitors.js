@@ -1,6 +1,6 @@
 import { db, addLog } from '../db.js';
 import { buildCommand, runShell, getState, disconnect, NAV_KEYS, describe } from '../adb.js';
-import { statusOf, setStatus, clearStatus, checkOne } from '../poller.js';
+import { statusOf, setStatus, clearStatus, checkOne, autoOpen } from '../poller.js';
 
 const octet = '(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
 const ipPattern = `^(${octet}\\.){3}${octet}$`;
@@ -94,6 +94,34 @@ export default async function monitorRoutes(app) {
     return reply.code(204).send();
   });
 
+  // Site the TV opens every time its screen turns on; '' clears it
+  app.put('/:id/startup', {
+    ...auth,
+    schema: {
+      params: idParams,
+      body: {
+        type: 'object',
+        required: ['url'],
+        additionalProperties: false,
+        properties: { url: { type: 'string', maxLength: 2048 } },
+      },
+    },
+  }, async (req, reply) => {
+    const m = find(req.params.id);
+    if (!m) return reply.code(404).send({ error: 'Монитор не найден' });
+    const url = req.body.url.trim();
+    if (url) {
+      try {
+        buildCommand('open_url', url);
+      } catch (e) {
+        return reply.code(400).send({ error: e.message });
+      }
+    }
+    db.prepare('UPDATE monitors SET startup_url = ? WHERE id = ?').run(url, m.id);
+    addLog(req.me.login, url ? `Стартовая ссылка: ${url.slice(0, 120)}` : 'Стартовая ссылка удалена', m.name);
+    return withStatus(find(m.id));
+  });
+
   app.post('/:id/refresh', { ...auth, schema: { params: idParams } }, async (req, reply) => {
     const m = find(req.params.id);
     if (!m) return reply.code(404).send({ error: 'Монитор не найден' });
@@ -119,6 +147,7 @@ export default async function monitorRoutes(app) {
     const m = find(req.params.id);
     if (!m) return reply.code(404).send({ error: 'Монитор не найден' });
 
+    const prev = statusOf(m.id).status;
     let args;
     try {
       args = buildCommand(req.body.action, req.body.value);
@@ -136,7 +165,11 @@ export default async function monitorRoutes(app) {
     }
 
     const { action, value } = req.body;
-    if (action === 'key' && value === 'wake') setStatus(m.id, 'online');
+    if (action === 'key' && value === 'wake') {
+      setStatus(m.id, 'online');
+      // Give the TV a moment after KEYCODE_WAKEUP before opening the startup site
+      if (prev !== 'online') autoOpen(m, 3000);
+    }
     if (action === 'key' && value === 'sleep') setStatus(m.id, 'standby');
     if (!(action === 'key' && NAV_KEYS.has(value))) addLog(req.me.login, describe(req.body), m.name);
 
@@ -159,8 +192,10 @@ export default async function monitorRoutes(app) {
       .filter((m) => ['online', 'standby'].includes(statusOf(m.id).status));
     const args = buildCommand('key', action);
     const results = await Promise.allSettled(targets.map(async (m) => {
+      const prev = statusOf(m.id).status;
       await runShell(m, args);
       setStatus(m.id, action === 'wake' ? 'online' : 'standby');
+      if (action === 'wake' && prev === 'standby') autoOpen(m, 3000);
     }));
     const done = results.filter((r) => r.status === 'fulfilled').length;
     addLog(

@@ -17,10 +17,12 @@ const url = ref('');
 const pkg = ref('');
 const busy = ref(false);
 const confirmDelete = ref(false);
+const startupDraft = ref(props.monitor.startup_url || '');
 
 watch(() => props.monitor.id, () => {
   url.value = '';
   pkg.value = '';
+  startupDraft.value = props.monitor.startup_url || '';
   confirmDelete.value = false;
 });
 
@@ -70,6 +72,24 @@ async function openUrl() {
     return;
   }
   if (await run('open_url', url.value.trim(), 'Ссылка открыта')) url.value = '';
+}
+
+async function saveStartup(value) {
+  const v = value.trim();
+  if (v && !/^https?:\/\/\S+$/.test(v)) {
+    toast.show('Введите адрес, начиная с http:// или https://');
+    return;
+  }
+  busy.value = true;
+  try {
+    await monitors.setStartup(props.monitor.id, v);
+    startupDraft.value = v;
+    toast.show(v ? 'Стартовая ссылка сохранена' : 'Стартовая ссылка убрана');
+  } catch (e) {
+    toast.show(e.message);
+  } finally {
+    busy.value = false;
+  }
 }
 
 function launch(name) {
@@ -185,6 +205,17 @@ async function remove() {
       </form>
     </section>
 
+    <section class="block">
+      <h3>Открывать при включении</h3>
+      <form class="inline" @submit.prevent="saveStartup(startupDraft)">
+        <label for="r-startup" class="sr-only">Стартовая ссылка</label>
+        <input id="r-startup" v-model="startupDraft" class="input small" type="url" placeholder="https://">
+        <button class="btn" type="submit" :disabled="busy || startupDraft.trim() === (monitor.startup_url || '')">Сохранить</button>
+      </form>
+      <button v-if="monitor.startup_url" class="btn btn-soft" type="button" :disabled="busy" @click="saveStartup('')">Убрать</button>
+      <p class="muted hint">Сайт откроется каждый раз, когда экран включается.</p>
+    </section>
+
     <section v-if="auth.isAdmin" class="block admin">
       <h3>Администрирование</h3>
       <button v-if="!confirmDelete" class="btn btn-danger" type="button" @click="confirmDelete = true">Удалить монитор</button>
@@ -224,6 +255,7 @@ async function remove() {
 .inline { display: flex; gap: 8px; }
 .inline .input { flex: 1; min-width: 0; }
 .small { font-size: 14px; }
+.hint { margin: 0; font-size: 13px; }
 .admin { padding-top: 16px; border-top: 1px solid var(--line-soft); }
 .note { margin: 0; padding-top: 16px; border-top: 1px solid var(--line-soft); font-size: 13px; }
 

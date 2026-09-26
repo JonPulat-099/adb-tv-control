@@ -20,6 +20,7 @@ db.exec(`
     location TEXT NOT NULL DEFAULT '',
     ip TEXT NOT NULL,
     port INTEGER NOT NULL DEFAULT 5555,
+    startup_url TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (ip, port)
   );
@@ -32,6 +33,11 @@ db.exec(`
     ok INTEGER NOT NULL DEFAULT 1
   );
 `);
+
+// Databases created before startup_url existed
+if (!db.prepare('PRAGMA table_info(monitors)').all().some((c) => c.name === 'startup_url')) {
+  db.exec("ALTER TABLE monitors ADD COLUMN startup_url TEXT NOT NULL DEFAULT ''");
+}
 
 export function seedAdmin() {
   const { c } = db.prepare('SELECT COUNT(*) AS c FROM users').get();
