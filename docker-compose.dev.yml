@@ -1,0 +1,39 @@
+# Dev environment: API with adb + Vite dev server, both with live reload.
+#   docker compose -f docker-compose.dev.yml up --build
+# UI: http://localhost:5173  API: http://localhost:3000
+# Settings come from server/.env.example, overridden by server/.env (set ADMIN_PASSWORD there).
+
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.dev
+    env_file:
+      - path: ./server/.env.example
+      - path: ./server/.env
+        required: false
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./server:/app
+      - /app/node_modules
+      # The container has its own adb key; keep it so TVs only ask to allow debugging once
+      - adb-keys:/root/.android
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.dev
+    environment:
+      API_URL: http://server:3000
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    depends_on:
+      - server
+
+volumes:
+  adb-keys:
