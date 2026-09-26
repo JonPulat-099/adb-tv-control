@@ -25,12 +25,12 @@ Roles: **admin** (everything) and **moderator** (controls TVs, cannot add/delete
 cd server
 cp .env.example .env      # set JWT_SECRET and ADMIN_PASSWORD
 npm install
-npm run dev               # http://localhost:3000
+npm run dev               # http://localhost:5050
 
 # 2. UI (second terminal)
 cd client
 npm install
-npm run dev               # http://localhost:5173, /api is proxied to :3000
+npm run dev               # http://localhost:3223, /api is proxied to :5050
 ```
 
 Log in with `ADMIN_LOGIN` / `ADMIN_PASSWORD` from `.env`. The admin is created only when the users table is empty.
@@ -46,7 +46,7 @@ Fastify serves `client/dist` and the API on one port. Put nginx in front for HTT
 
 ```nginx
 location / {
-    proxy_pass http://127.0.0.1:3000;
+    proxy_pass http://127.0.0.1:5050;
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
 }
@@ -86,6 +86,7 @@ All routes except login need `Authorization: Bearer <token>`.
 | DELETE | /api/monitors/:id | admin | remove + `adb disconnect` |
 | POST | /api/monitors/:id/refresh | any | re-check status now |
 | PUT | /api/monitors/:id/startup | any | `{url}` — site opened every time the screen turns on (`""` clears) |
+| GET | /api/monitors/:id/screen | any | PNG screenshot of the current screen (online TVs only; DRM video / HDMI come out black) |
 | POST | /api/monitors/:id/command | any | `{action, value}` (see below) |
 | POST | /api/monitors/bulk | any | `{action: "wake" \| "sleep"}` for all reachable TVs |
 | GET/POST | /api/users | admin | list / create (`role`: admin \| moderator) |

@@ -19,7 +19,7 @@ env: ## Create server/.env with a random JWT secret and admin password if missin
 		exit 1; \
 	fi
 
-up: env ## Start dev stack in foreground (UI :5173, API :3000)
+up: env ## Start dev stack in foreground (UI :3223, API :5050)
 	$(COMPOSE) up --build
 
 upd: env ## Start dev stack in background

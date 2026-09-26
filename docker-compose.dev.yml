@@ -1,6 +1,6 @@
 # Dev environment: API with adb + Vite dev server, both with live reload.
 #   docker compose -f docker-compose.dev.yml up --build
-# UI: http://localhost:5173  API: http://localhost:3000
+# UI: http://localhost:3223  API: http://localhost:5050
 # Settings come from server/.env.example, overridden by server/.env (set ADMIN_PASSWORD there).
 
 services:
@@ -13,7 +13,7 @@ services:
       - path: ./server/.env
         required: false
     ports:
-      - "3000:3000"
+      - "5050:5050"
     volumes:
       - ./server:/app
       - /app/node_modules
@@ -26,9 +26,9 @@ services:
       context: ./client
       dockerfile: Dockerfile.dev
     environment:
-      API_URL: http://server:3000
+      API_URL: http://server:5050
     ports:
-      - "5173:5173"
+      - "3223:3223"
     volumes:
       - ./client:/app
       - /app/node_modules

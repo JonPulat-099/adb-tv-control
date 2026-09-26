@@ -1,5 +1,5 @@
 import { db, addLog } from '../db.js';
-import { buildCommand, runShell, getState, disconnect, NAV_KEYS, describe } from '../adb.js';
+import { buildCommand, runShell, getState, disconnect, screenshot, NAV_KEYS, describe } from '../adb.js';
 import { statusOf, setStatus, clearStatus, checkOne, autoOpen } from '../poller.js';
 
 const octet = '(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
@@ -9,6 +9,9 @@ const idParams = { type: 'object', properties: { id: { type: 'integer' } }, requ
 
 const find = (id) => db.prepare('SELECT * FROM monitors WHERE id = ?').get(id);
 const withStatus = (m) => ({ ...m, ...statusOf(m.id) });
+
+// One screencap per TV at a time; concurrent requests share the result.
+const captures = new Map();
 
 export default async function monitorRoutes(app) {
   const auth = { preHandler: app.auth };
@@ -127,6 +130,31 @@ export default async function monitorRoutes(app) {
     if (!m) return reply.code(404).send({ error: 'Монитор не найден' });
     await checkOne(m);
     return withStatus(m);
+  });
+
+  // Screenshot of what the TV currently shows (on demand, not logged)
+  app.get('/:id/screen', { ...auth, schema: { params: idParams } }, async (req, reply) => {
+    const m = find(req.params.id);
+    if (!m) return reply.code(404).send({ error: 'Монитор не найден' });
+    if (statusOf(m.id).status !== 'online') {
+      return reply.code(409).send({ error: 'Экран выключен — снимок недоступен' });
+    }
+
+    let job = captures.get(m.id);
+    if (!job) {
+      job = screenshot(m).finally(() => captures.delete(m.id));
+      captures.set(m.id, job);
+    }
+    let png;
+    try {
+      png = await job;
+    } catch (e) {
+      checkOne(m).catch(() => {});
+      if (e.statusCode) return reply.code(e.statusCode).send({ error: e.message });
+      return reply.code(502).send({ error: `Не удалось получить снимок экрана «${m.name}»` });
+    }
+    if (!png.length) return reply.code(502).send({ error: `Не удалось получить снимок экрана «${m.name}»` });
+    return reply.header('Cache-Control', 'no-store').type('image/png').send(png);
   });
 
   app.post('/:id/command', {

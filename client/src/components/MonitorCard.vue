@@ -1,6 +1,7 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import { statusOf, formatTime } from '../status';
+import { apiBlob } from '../api';
 import Icon from './Icon.vue';
 
 const props = defineProps({
@@ -12,6 +13,36 @@ const emit = defineEmits(['select', 'power', 'refresh']);
 const st = computed(() => statusOf(props.monitor.status));
 const canPower = computed(() => ['online', 'standby'].includes(props.monitor.status));
 const powerLabel = computed(() => (props.monitor.status === 'online' ? 'Перевести в ожидание' : 'Включить'));
+// On-demand screenshot of what the TV is showing
+const shot = ref(null); // { url, at }
+const shotLoading = ref(false);
+const shotError = ref('');
+
+function clearShot() {
+  if (shot.value) URL.revokeObjectURL(shot.value.url);
+  shot.value = null;
+  shotError.value = '';
+}
+
+async function loadShot() {
+  if (props.monitor.status !== 'online' || shotLoading.value) return;
+  shotLoading.value = true;
+  shotError.value = '';
+  try {
+    const blob = await apiBlob(`/monitors/${props.monitor.id}/screen`);
+    if (props.monitor.status !== 'online') return;
+    clearShot();
+    shot.value = { url: URL.createObjectURL(blob), at: new Date().toISOString() };
+  } catch (e) {
+    shotError.value = e.message;
+  } finally {
+    shotLoading.value = false;
+  }
+}
+
+watch(() => props.monitor.status, (s) => { if (s !== 'online') clearShot(); });
+onBeforeUnmount(clearShot);
+
 const startupHost = computed(() => {
   try {
     return props.monitor.startup_url ? new URL(props.monitor.startup_url).host : '';
@@ -23,7 +54,19 @@ const startupHost = computed(() => {
 
 <template>
   <article class="card" :class="{ selected }">
-    <div class="screen" :class="`screen-${monitor.status}`">
+    <button v-if="monitor.status === 'online'" class="screen screen-online screen-btn" type="button"
+      :class="{ loading: shotLoading }" :aria-label="`Показать экран: ${monitor.name}`" @click="loadShot">
+      <template v-if="shot">
+        <img class="shot" :src="shot.url" alt="" />
+        <span class="shot-time">{{ shotLoading ? 'Обновление…' : `Снимок в ${formatTime(shot.at)}` }}</span>
+      </template>
+      <template v-else>
+        <span class="screen-title">{{ shotLoading ? 'Получение снимка…' : st.screen }}</span>
+        <span v-if="shotError" class="screen-sub screen-err">{{ shotError }}</span>
+        <span v-else class="screen-sub">Нажмите, чтобы показать экран</span>
+      </template>
+    </button>
+    <div v-else class="screen" :class="`screen-${monitor.status}`">
       <span class="screen-title">{{ st.screen }}</span>
       <span v-if="monitor.checkedAt" class="screen-sub">Проверено в {{ formatTime(monitor.checkedAt) }}</span>
     </div>
@@ -65,6 +108,16 @@ const startupHost = computed(() => {
 .screen-unauthorized { background: #221b0e; color: var(--st-auth); }
 .screen-title { font-size: 15px; font-weight: 500; }
 .screen-sub { font-size: 12px; color: var(--muted); }
+.screen-err { color: var(--danger); }
+.screen-btn { position: relative; overflow: hidden; width: 100%; cursor: pointer; font: inherit; }
+.screen-btn:hover { border-color: var(--line); }
+.screen-btn.loading { cursor: progress; }
+.shot { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+.screen-btn.loading .shot { opacity: .55; }
+.shot-time {
+  position: absolute; right: 6px; bottom: 6px; padding: 2px 6px; border-radius: 6px;
+  background: rgba(0, 0, 0, .65); color: #fff; font-size: 11px;
+}
 .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
 .name { margin: 0; font-size: 17px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meta { font-size: 13px; color: var(--muted); }

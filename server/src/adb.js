@@ -3,9 +3,11 @@ import { execFile } from 'node:child_process';
 const ADB = process.env.ADB_PATH || 'adb';
 
 // execFile (no local shell) — arguments are never interpreted by a shell on the server.
-function run(args, timeout = 8000) {
+// encoding 'buffer' returns raw stdout (binary output such as screencap PNGs).
+function run(args, timeout = 8000, encoding = 'utf8') {
   return new Promise((resolve, reject) => {
-    execFile(ADB, args, { timeout, windowsHide: true }, (err, stdout, stderr) => {
+    const opts = { timeout, windowsHide: true, encoding, maxBuffer: 64 * 1024 * 1024 };
+    execFile(ADB, args, opts, (err, stdout, stderr) => {
       if (err) {
         if (err.code === 'ENOENT') {
           err.message = `adb не найден (${ADB}). Установите platform-tools или задайте ADB_PATH`;
@@ -14,7 +16,7 @@ function run(args, timeout = 8000) {
         err.stderr = String(stderr || '');
         return reject(err);
       }
-      resolve(String(stdout));
+      resolve(encoding === 'buffer' ? stdout : String(stdout));
     });
   });
 }
@@ -68,6 +70,18 @@ export async function runShell(m, args) {
   await ensureConnected(m);
   return run(['-s', serialOf(m), 'shell', ...args], 10000);
 }
+
+/** PNG of what the TV is showing right now (DRM content and HDMI inputs come out black). */
+export async function screenshot(m) {
+  await ensureConnected(m);
+  const out = await run(['-s', serialOf(m), 'exec-out', 'screencap', '-p'], 15000, 'buffer');
+  // Some firmwares (Xiaomi) print debug lines to stdout before the image
+  const start = out.indexOf(PNG_SIG);
+  if (start < 0) throw new Error('screencap returned no image');
+  return out.subarray(start);
+}
+
+const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 export async function disconnect(m) {
   return run(['disconnect', serialOf(m)], 4000);
