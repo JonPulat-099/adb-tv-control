@@ -1,0 +1,15 @@
+# Template: `make autostart-install` fills in %DIR% and %USER% and installs it to /etc/systemd/system.
+[Unit]
+Description=tv-control: stop other containers and start the tv-control stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=%USER%
+ExecStart=%DIR%/scripts/autostart.sh
+
+[Install]
+WantedBy=multi-user.target

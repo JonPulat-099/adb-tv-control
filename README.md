@@ -35,6 +35,17 @@ npm run dev               # http://localhost:3223, /api is proxied to :5050
 
 Log in with `ADMIN_LOGIN` / `ADMIN_PASSWORD` from `.env`. The admin is created only when the users table is empty.
 
+### Autostart on boot
+
+`scripts/autostart.sh` stops every running Docker container that doesn't belong to this project (they are only stopped, not removed) and starts the dev stack with `docker compose -f docker-compose.dev.yml up -d`.
+
+```bash
+make autostart-install     # installs and enables /etc/systemd/system/tv-control.service (sudo)
+make autostart-remove      # disables and removes it
+sudo systemctl start tv-control   # run it now without rebooting
+journalctl -u tv-control          # output of the last runs
+```
+
 ## Production
 
 ```bash
