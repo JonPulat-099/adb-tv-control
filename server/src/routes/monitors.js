@@ -74,6 +74,8 @@ export default async function monitorRoutes(app) {
         properties: {
           name: { type: 'string', minLength: 1, maxLength: 80 },
           location: { type: 'string', maxLength: 120 },
+          ip: { type: 'string', pattern: ipPattern },
+          port,
         },
       },
     },
@@ -82,9 +84,28 @@ export default async function monitorRoutes(app) {
     if (!m) return reply.code(404).send({ error: 'Монитор не найден' });
     const name = req.body.name?.trim() ?? m.name;
     const location = req.body.location?.trim() ?? m.location;
-    db.prepare('UPDATE monitors SET name = ?, location = ? WHERE id = ?').run(name, location, m.id);
-    addLog(req.me.login, 'Изменён монитор', name);
-    return withStatus(find(m.id));
+    const ip = req.body.ip ?? m.ip;
+    const p = req.body.port ?? m.port;
+    try {
+      db.prepare('UPDATE monitors SET name = ?, location = ?, ip = ?, port = ? WHERE id = ?')
+        .run(name, location, ip, p, m.id);
+    } catch (e) {
+      if (String(e.message).includes('UNIQUE')) {
+        return reply.code(409).send({ error: 'Монитор с таким IP и портом уже добавлен' });
+      }
+      throw e;
+    }
+    const updated = find(m.id);
+    if (ip !== m.ip || p !== m.port) {
+      // New address: drop the old adb connection and re-check right away
+      disconnect(m).catch(() => {});
+      clearStatus(m.id);
+      checkOne(updated).catch(() => {});
+      addLog(req.me.login, `Изменён адрес: ${m.ip}:${m.port} → ${ip}:${p}`, name);
+    } else {
+      addLog(req.me.login, 'Изменён монитор', name);
+    }
+    return withStatus(updated);
   });
 
   app.delete('/:id', { ...admin, schema: { params: idParams } }, async (req, reply) => {

@@ -82,7 +82,7 @@ All routes except login need `Authorization: Bearer <token>`.
 | GET | /api/monitors | any | list with live status |
 | POST | /api/monitors/test | admin | `{ip, port}` → check before adding |
 | POST | /api/monitors | admin | `{name, ip, port, location}` |
-| PATCH | /api/monitors/:id | admin | `{name, location}` |
+| PATCH | /api/monitors/:id | admin | `{name, location, ip, port}` — any subset; a new address re-checks the TV |
 | DELETE | /api/monitors/:id | admin | remove + `adb disconnect` |
 | POST | /api/monitors/:id/refresh | any | re-check status now |
 | PUT | /api/monitors/:id/startup | any | `{url}` — site opened every time the screen turns on (`""` clears) |

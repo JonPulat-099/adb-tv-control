@@ -5,7 +5,7 @@ import { useMonitors } from '../stores/monitors';
 import { useToast } from '../stores/toast';
 import MonitorCard from '../components/MonitorCard.vue';
 import RemotePanel from '../components/RemotePanel.vue';
-import AddMonitorModal from '../components/AddMonitorModal.vue';
+import MonitorModal from '../components/MonitorModal.vue';
 import Icon from '../components/Icon.vue';
 
 const auth = useAuth();
@@ -15,6 +15,7 @@ const toast = useToast();
 const filter = ref('all');
 const selectedId = ref(null);
 const addOpen = ref(false);
+const editId = ref(null);
 const bulkBusy = ref(false);
 
 onMounted(() => monitors.startPolling());
@@ -36,6 +37,7 @@ const shown = computed(() => monitors.list.filter((m) => {
 }));
 
 const selected = computed(() => monitors.list.find((m) => m.id === selectedId.value) || null);
+const editing = computed(() => monitors.list.find((m) => m.id === editId.value) || null);
 
 async function power(m) {
   const wake = m.status !== 'online';
@@ -115,8 +117,9 @@ async function bulk(action) {
     </div>
   </main>
 
-  <RemotePanel v-if="selected" :monitor="selected" @close="selectedId = null" />
-  <AddMonitorModal v-if="addOpen" @close="addOpen = false" />
+  <RemotePanel v-if="selected" :monitor="selected" @close="selectedId = null" @edit="editId = $event" />
+  <MonitorModal v-if="addOpen" @close="addOpen = false" />
+  <MonitorModal v-if="editing" :key="editing.id" :monitor="editing" @close="editId = null" />
 </template>
 
 <style scoped>

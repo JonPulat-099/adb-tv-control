@@ -7,7 +7,7 @@ import { statusOf } from '../status';
 import Icon from './Icon.vue';
 
 const props = defineProps({ monitor: { type: Object, required: true } });
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'edit']);
 
 const auth = useAuth();
 const monitors = useMonitors();
@@ -218,13 +218,16 @@ async function remove() {
 
     <section v-if="auth.isAdmin" class="block admin">
       <h3>Администрирование</h3>
-      <button v-if="!confirmDelete" class="btn btn-danger" type="button" @click="confirmDelete = true">Удалить монитор</button>
+      <div v-if="!confirmDelete" class="pair">
+        <button class="btn" type="button" @click="emit('edit', monitor.id)">Изменить</button>
+        <button class="btn btn-danger" type="button" @click="confirmDelete = true">Удалить</button>
+      </div>
       <div v-else class="pair">
         <button class="btn" type="button" @click="confirmDelete = false">Отмена</button>
         <button class="btn btn-danger-fill" type="button" :disabled="busy" @click="remove">Удалить «{{ monitor.name }}»</button>
       </div>
     </section>
-    <p v-else class="muted note">Удаление мониторов доступно только администратору.</p>
+    <p v-else class="muted note">Изменение и удаление мониторов доступно только администратору.</p>
   </aside>
 </template>
 

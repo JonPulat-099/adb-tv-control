@@ -5,11 +5,19 @@ import { useToast } from '../stores/toast';
 import { IP_RE } from '../status';
 import Icon from './Icon.vue';
 
+const props = defineProps({ monitor: { type: Object, default: null } });
 const emit = defineEmits(['close']);
 const monitors = useMonitors();
 const toast = useToast();
 
-const form = reactive({ name: '', ip: '', port: 5555, location: '' });
+// With `monitor` set the dialog edits it instead of adding a new one
+const editing = computed(() => !!props.monitor);
+const form = reactive({
+  name: props.monitor?.name ?? '',
+  ip: props.monitor?.ip ?? '',
+  port: props.monitor?.port ?? 5555,
+  location: props.monitor?.location ?? '',
+});
 const error = ref('');
 const testResult = ref('');
 const busy = ref(false);
@@ -56,10 +64,16 @@ async function submit() {
   if (error.value) return;
   busy.value = true;
   try {
-    const m = await monitors.add({
+    const data = {
       name: form.name.trim(), ip: form.ip.trim(), port: Number(form.port), location: form.location.trim(),
-    });
-    toast.show(`Монитор «${m.name}» добавлен`);
+    };
+    if (editing.value) {
+      const m = await monitors.update(props.monitor.id, data);
+      toast.show(`Монитор «${m.name}» сохранён`);
+    } else {
+      const m = await monitors.add(data);
+      toast.show(`Монитор «${m.name}» добавлен`);
+    }
     emit('close');
   } catch (e) {
     error.value = e.message;
@@ -73,10 +87,10 @@ async function submit() {
   <div class="overlay" @click.self="emit('close')" @keydown.esc="emit('close')">
     <form class="dialog" role="dialog" aria-modal="true" aria-labelledby="add-title" @submit.prevent="submit" @input="onEdit">
       <div class="head">
-        <h2 id="add-title">Новый монитор</h2>
+        <h2 id="add-title">{{ editing ? 'Изменить монитор' : 'Новый монитор' }}</h2>
         <button class="btn btn-icon btn-plain" type="button" aria-label="Закрыть" @click="emit('close')"><Icon name="close" /></button>
       </div>
-      <ol class="steps">
+      <ol v-if="!editing" class="steps">
         <li>На ТВ: Настройки → Об устройстве → 7 раз нажмите «Сборка».</li>
         <li>В разделе «Для разработчиков» включите отладку по сети.</li>
         <li>Узнайте IP в настройках сети и введите его ниже.</li>
@@ -107,7 +121,7 @@ async function submit() {
         <button class="btn" type="button" :disabled="busy" @click="runTest">
           {{ busy ? 'Проверка…' : 'Проверить подключение' }}
         </button>
-        <button class="btn btn-primary" type="submit" :disabled="busy">Добавить</button>
+        <button class="btn btn-primary" type="submit" :disabled="busy">{{ editing ? 'Сохранить' : 'Добавить' }}</button>
       </div>
     </form>
   </div>

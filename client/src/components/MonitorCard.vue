@@ -87,7 +87,10 @@ const startupHost = computed(() => {
         :aria-label="`${powerLabel}: ${monitor.name}`" :title="powerLabel" @click="emit('power', monitor)">
         <Icon name="power" />
       </button>
-      <button v-else class="btn" type="button" @click="emit('refresh', monitor.id)">Переподключить</button>
+      <button v-else class="btn btn-icon" type="button" :aria-label="`Переподключить: ${monitor.name}`"
+        title="Переподключить" @click="emit('refresh', monitor.id)">
+        <Icon name="refresh" />
+      </button>
     </div>
   </article>
 </template>
@@ -122,6 +125,7 @@ const startupHost = computed(() => {
 .name { margin: 0; font-size: 17px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meta { font-size: 13px; color: var(--muted); }
 .startup { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.actions { display: flex; gap: 8px; }
-.remote { flex: 1; }
+/* Pinned to the bottom so buttons line up across cards of different heights */
+.actions { display: flex; gap: 8px; margin-top: auto; }
+.remote { flex: 1; min-width: 0; }
 </style>

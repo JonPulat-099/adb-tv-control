@@ -53,6 +53,12 @@ export const useMonitors = defineStore('monitors', {
       this.list.push(m);
       return m;
     },
+    async update(id, data) {
+      const m = await api(`/monitors/${id}`, { method: 'PATCH', body: data });
+      const i = this.list.findIndex((x) => x.id === id);
+      if (i !== -1) this.list[i] = m;
+      return m;
+    },
     async setStartup(id, url) {
       const m = await api(`/monitors/${id}/startup`, { method: 'PUT', body: { url } });
       const i = this.list.findIndex((x) => x.id === id);
