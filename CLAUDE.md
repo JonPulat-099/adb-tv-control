@@ -2,19 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Admin panel for controlling Xiaomi / Android TVs over network ADB. Two independent npm packages, no root package.json, no tests, no linter configured.
+Admin panel for controlling Xiaomi / Android TVs over network ADB. Two independent Yarn (Classic 1.x) packages, no root package.json, no tests, no linter configured.
 
 ## Commands
 
 ```bash
 # API (Node 20.6+, needs server/.env — copy .env.example, set JWT_SECRET ≥32 chars and ADMIN_PASSWORD ≠ "change-me")
-cd server && npm install && npm run dev     # node --watch, http://localhost:5050
+cd server && yarn install && yarn dev         # node --watch, http://localhost:5050
 
 # UI (second terminal)
-cd client && npm install && npm run dev     # Vite on :3223, proxies /api → :5050
+cd client && yarn install && yarn dev         # Vite on :3223, proxies /api → :5050
 
 # Production: build client, then server serves client/dist + API on one port
-cd client && npm run build && cd ../server && npm start
+cd client && yarn build && cd ../server && yarn start
 ```
 
 `adb` must be installed on the server machine (or set `ADB_PATH`). The server will refuse to start without a valid `JWT_SECRET`, and `seedAdmin()` throws on an empty users table if `ADMIN_PASSWORD` is unset/default.

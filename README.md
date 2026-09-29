@@ -24,13 +24,13 @@ Roles: **admin** (everything) and **moderator** (controls TVs, cannot add/delete
 # 1. API
 cd server
 cp .env.example .env      # set JWT_SECRET and ADMIN_PASSWORD
-npm install
-npm run dev               # http://localhost:5050
+yarn install
+yarn dev                  # http://localhost:5050
 
 # 2. UI (second terminal)
 cd client
-npm install
-npm run dev               # http://localhost:3223, /api is proxied to :5050
+yarn install
+yarn dev                  # http://localhost:3223, /api is proxied to :5050
 ```
 
 Log in with `ADMIN_LOGIN` / `ADMIN_PASSWORD` from `.env`. The admin is created only when the users table is empty.
@@ -38,8 +38,8 @@ Log in with `ADMIN_LOGIN` / `ADMIN_PASSWORD` from `.env`. The admin is created o
 ## Production
 
 ```bash
-cd client && npm ci && npm run build   # creates client/dist
-cd ../server && npm ci --omit=dev && npm start
+cd client && yarn install --frozen-lockfile && yarn build   # creates client/dist
+cd ../server && yarn install --frozen-lockfile --production && yarn start
 ```
 
 Fastify serves `client/dist` and the API on one port. Put nginx in front for HTTPS:
