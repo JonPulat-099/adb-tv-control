@@ -1,7 +1,7 @@
 COMPOSE := docker compose -f docker-compose.dev.yml
 
 .DEFAULT_GOAL := help
-.PHONY: help env up upd down build rebuild restart logs ps sh-server sh-client adb clean
+.PHONY: help env up upd down build rebuild restart logs ps sh-server sh-client adb clean autostart-install autostart-remove
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -54,3 +54,14 @@ adb: ## Run adb in server container, e.g. make adb ARGS="devices"
 
 clean: ## Stop and remove containers, volumes (incl. adb keys) and images
 	$(COMPOSE) down -v --rmi local
+
+autostart-install: env ## Run scripts/autostart.sh on boot (systemd, needs sudo)
+	sed -e 's|%DIR%|$(CURDIR)|g' -e 's|%USER%|$(USER)|g' scripts/tv-control.service \
+		| sudo tee /etc/systemd/system/tv-control.service >/dev/null
+	sudo systemctl daemon-reload
+	sudo systemctl enable tv-control.service
+
+autostart-remove: ## Remove the boot autostart unit
+	-sudo systemctl disable tv-control.service
+	sudo rm -f /etc/systemd/system/tv-control.service
+	sudo systemctl daemon-reload
